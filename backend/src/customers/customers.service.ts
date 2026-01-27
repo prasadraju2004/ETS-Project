@@ -2,12 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Customer, CustomerDocument } from './customers.schema';
+import { EventsService } from '../events/events.service';
 
 @Injectable()
 export class CustomersService {
   constructor(
     @InjectModel(Customer.name)
     private customerModel: Model<CustomerDocument>,
+    private readonly eventsService: EventsService,
   ) {}
 
   async create(customer: Customer): Promise<Customer> {
@@ -90,6 +92,86 @@ export class CustomersService {
       return deletedCustomer;
     } catch (error) {
       console.error('Error in delete:', error);
+      throw error;
+    }
+  }
+
+  async likeEvent(customerId: string, eventId: string): Promise<Customer> {
+    try {
+      // First, verify the customer exists
+      const customer = await this.customerModel.findById(customerId).exec();
+      if (!customer) {
+        throw new NotFoundException(`Customer with ID ${customerId} not found`);
+      }
+
+      // Check if the event is already liked
+      const alreadyLiked = customer.likedEvents?.some(
+        (id) => id.toString() === eventId,
+      );
+
+      if (alreadyLiked) {
+        throw new Error('Event already liked by this customer');
+      }
+
+      // Increment the like count on the event
+      await this.eventsService.incrementLike(eventId);
+
+      // Add the event to the customer's likedEvents array
+      const updatedCustomer = await this.customerModel
+        .findByIdAndUpdate(
+          customerId,
+          { $addToSet: { likedEvents: eventId } },
+          { new: true },
+        )
+        .exec();
+
+      if (!updatedCustomer) {
+        throw new NotFoundException(`Customer with ID ${customerId} not found`);
+      }
+
+      return updatedCustomer;
+    } catch (error) {
+      console.error('Error in likeEvent:', error);
+      throw error;
+    }
+  }
+
+  async unlikeEvent(customerId: string, eventId: string): Promise<Customer> {
+    try {
+      // First, verify the customer exists
+      const customer = await this.customerModel.findById(customerId).exec();
+      if (!customer) {
+        throw new NotFoundException(`Customer with ID ${customerId} not found`);
+      }
+
+      // Check if the event is in the liked events
+      const isLiked = customer.likedEvents?.some(
+        (id) => id.toString() === eventId,
+      );
+
+      if (!isLiked) {
+        throw new Error('Event not in liked events');
+      }
+
+      // Decrement the like count on the event
+      await this.eventsService.decrementLike(eventId);
+
+      // Remove the event from the customer's likedEvents array
+      const updatedCustomer = await this.customerModel
+        .findByIdAndUpdate(
+          customerId,
+          { $pull: { likedEvents: eventId } },
+          { new: true },
+        )
+        .exec();
+
+      if (!updatedCustomer) {
+        throw new NotFoundException(`Customer with ID ${customerId} not found`);
+      }
+
+      return updatedCustomer;
+    } catch (error) {
+      console.error('Error in unlikeEvent:', error);
       throw error;
     }
   }

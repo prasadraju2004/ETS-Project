@@ -53,4 +53,20 @@ export class CustomersController {
   async delete(@Param('id') id: string): Promise<Customer> {
     return this.customersService.delete(id);
   }
+
+  @Post(':id/like-event')
+  async likeEvent(
+    @Param('id') customerId: string,
+    @Body('eventId') eventId: string,
+  ): Promise<Customer> {
+    return this.customersService.likeEvent(customerId, eventId);
+  }
+
+  @Delete(':id/like-event')
+  async unlikeEvent(
+    @Param('id') customerId: string,
+    @Body('eventId') eventId: string,
+  ): Promise<Customer> {
+    return this.customersService.unlikeEvent(customerId, eventId);
+  }
 }

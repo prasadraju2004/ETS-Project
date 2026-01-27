@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Schema as MongooseSchema } from 'mongoose';
 
 export type CustomerDocument = Customer & Document;
 
@@ -16,5 +16,11 @@ export class Customer {
     _id: false,
   })
   loyalty!: { loyaltyId?: string; verified: boolean };
+
+  @Prop({
+    type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Event' }],
+    default: [],
+  })
+  likedEvents!: MongooseSchema.Types.ObjectId[];
 }
 export const CustomerSchema = SchemaFactory.createForClass(Customer);

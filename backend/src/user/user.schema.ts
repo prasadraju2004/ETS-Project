@@ -31,6 +31,9 @@ export class User {
   @Prop({ required: true, unique: true, index: true })
   email: string;
 
+  @Prop({ required: true, unique: true, index: true })
+  phone: string;
+
   @Prop({ type: String, enum: UserRole, index: true })
   role: UserRole;
 

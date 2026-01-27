@@ -12,6 +12,14 @@ export class Customer {
   encryptedPII!: { name: string; email: string; phone: string };
 
   @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
+  })
+  userId!: MongooseSchema.Types.ObjectId;
+
+  @Prop({
     type: { loyaltyId: String, verified: Boolean },
     _id: false,
   })

@@ -5,7 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import Navbar from "@/app/components/Navbar";
 import VenueMap from "@/app/components/VenueMap";
 import { useAuth } from "@/context/AuthContext";
-import { ArrowLeft, ShoppingCart } from "lucide-react";
+import { ArrowLeft, ShoppingCart, Loader2 } from "lucide-react";
+import { io } from "socket.io-client";
 
 export default function EventSeatingPage() {
   const params = useParams();
@@ -19,6 +20,8 @@ export default function EventSeatingPage() {
   const [customerId, setCustomerId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isLocking, setIsLocking] = useState(false);
+  const [socket, setSocket] = useState(null);
 
   const eventId = params?.id;
 
@@ -79,22 +82,96 @@ export default function EventSeatingPage() {
     load();
   }, [eventId, user]);
 
-  const handleSeatClick = (seat) => {
+  // WebSocket Connection
+  useEffect(() => {
+    if (!eventId) return;
+
+    const newSocket = io(process.env.NEXT_PUBLIC_BACKEND_URI || "http://localhost:3001", {
+      withCredentials: true,
+    });
+
+    newSocket.on("connect", () => {
+      console.log("Connected to WebSocket");
+      newSocket.emit("join-event", eventId);
+    });
+
+    newSocket.on("seatStatusChanged", ({ seatId, status }) => {
+      console.log(`Seat ${seatId} changed to ${status}`);
+      setSeats((currentSeats) =>
+        currentSeats.map((s) => (s._id === seatId ? { ...s, status } : s))
+      );
+
+      // If a seat we had selected was locked by someone else or sold, remove it
+      if (status !== "AVAILABLE" && status !== "LOCKED") {
+        setSelectedSeats(prev => {
+          if (prev.has(seatId)) {
+            const next = new Set(prev);
+            next.delete(seatId);
+            return next;
+          }
+          return prev;
+        });
+      }
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.emit("leave-event", eventId);
+      newSocket.disconnect();
+    };
+  }, [eventId]);
+
+  const handleSeatClick = async (seat) => {
+    // If already selected, we just toggle it locally for now (unlocking is complex)
+    // In a production app, we'd have a DELETE /lock-seat too.
+    if (selectedSeats.has(seat._id)) {
+      setSelectedSeats((prev) => {
+        const next = new Set(prev);
+        next.delete(seat._id);
+        return next;
+      });
+      return;
+    }
+
     if (seat.status !== "AVAILABLE") return;
 
-    setSelectedSeats((prev) => {
-      const next = new Set(prev);
-      if (next.has(seat._id)) {
-        next.delete(seat._id);
-      } else {
-        if (next.size >= 10) {
-          alert("Maximum 10 seats can be selected at once");
-          return prev;
+    if (!user || !customerId) {
+      alert("Please login to select seats");
+      router.push("/auth/login");
+      return;
+    }
+
+    try {
+      setIsLocking(true);
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URI}/seats/lock-seat`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventSeatId: seat._id,
+            userId: customerId,
+          }),
         }
-        next.add(seat._id);
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Failed to lock seat");
       }
-      return next;
-    });
+
+      setSelectedSeats((prev) => {
+        const next = new Set(prev);
+        next.add(seat._id);
+        return next;
+      });
+    } catch (err) {
+      console.error("Lock error:", err);
+      alert(err.message);
+    } finally {
+      setIsLocking(false);
+    }
   };
 
   const calculateTotal = () => {
@@ -216,7 +293,15 @@ export default function EventSeatingPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative">
+        {isLocking && (
+          <div className="absolute inset-0 z-50 bg-white/50 backdrop-blur-sm flex items-center justify-center rounded-lg">
+            <div className="bg-slate-900 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center space-x-3">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              <span className="font-bold text-lg">Reserving seat...</span>
+            </div>
+          </div>
+        )}
         <VenueMap
           venue={venue}
           eventId={event._id}
@@ -243,9 +328,14 @@ export default function EventSeatingPage() {
               </div>
               <button
                 onClick={handleCheckout}
-                className="flex items-center space-x-2 px-8 py-3 bg-white text-slate-900 rounded-lg font-bold hover:bg-gray-100 transition-colors"
+                disabled={isLocking}
+                className="flex items-center space-x-2 px-8 py-3 bg-white text-slate-900 rounded-lg font-bold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <ShoppingCart className="w-5 h-5" />
+                {isLocking ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <ShoppingCart className="w-5 h-5" />
+                )}
                 <span>Continue to Checkout</span>
               </button>
             </div>

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Ticket, TicketDocument, TicketStatus } from './tickets.schema';
 
 @Injectable()
@@ -8,7 +8,7 @@ export class TicketsService {
   constructor(
     @InjectModel(Ticket.name)
     private ticketModel: Model<TicketDocument>,
-  ) {}
+  ) { }
 
   async create(ticket: Ticket): Promise<Ticket> {
     try {
@@ -62,7 +62,12 @@ export class TicketsService {
 
   async findByCustomerId(customerId: string): Promise<Ticket[]> {
     try {
-      return await this.ticketModel.find({ customerId }).exec();
+      return await this.ticketModel
+        .find({ customerId: new Types.ObjectId(customerId) })
+        .populate('eventId')
+        .populate('seatId')
+        .populate('zoneId')
+        .exec();
     } catch (error) {
       console.error('Error in findByCustomerId:', error);
       throw error;

@@ -37,7 +37,7 @@ export default function Navbar() {
   const customerNavItems = [
     { icon: Home, label: "Home", path: "/" },
     // { icon: Search, label: "Explore", path: "/explore" },
-    { icon: Ticket, label: "My Tickets", path: "/customer/my-tickets" },
+    { icon: Ticket, label: "My Tickets", path: "/customer/tickets" },
     { icon: Heart, label: "Favorites", path: "/customer/favorites" },
   ];
 
@@ -103,11 +103,10 @@ export default function Navbar() {
                   <button
                     key={item.path}
                     onClick={() => handleNavigation(item.path)}
-                    className={`flex items-center space-x-2 py-2 transition-colors text-md ${
-                      active
+                    className={`flex items-center space-x-2 py-2 transition-colors text-md ${active
                         ? "text-slate-800 font-medium border-b-2 border-slate-800"
                         : "text-gray-500 hover:text-gray-700"
-                    }`}
+                      }`}
                   >
                     <Icon className={`w-5 h-5 ${active ? "text-slate-800" : ""}`} />
                     <span>{item.label}</span>
@@ -143,11 +142,10 @@ export default function Navbar() {
               <button
                 key={item.path}
                 onClick={() => handleNavigation(item.path)}
-                className={`flex flex-col items-center py-3 transition-colors ${
-                  active
+                className={`flex flex-col items-center py-3 transition-colors ${active
                     ? "text-slate-800 font-medium"
                     : "text-gray-500"
-                }`}
+                  }`}
               >
                 <Icon className={`w-5 h-5 mb-1 ${active ? "text-slate-800" : ""}`} />
                 <span className="text-xs">{item.label}</span>

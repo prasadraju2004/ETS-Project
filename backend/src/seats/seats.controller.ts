@@ -21,7 +21,7 @@ export class SeatsController {
     private seatsService: SeatsService,
     private venueService: VenueService,
     private eventsService: EventsService,
-  ) {}
+  ) { }
 
   /**
    * GET /seats/event/:eventId
@@ -32,7 +32,7 @@ export class SeatsController {
     try {
       const seats = await this.seatsService.getEventSeats(eventId);
       const availability = await this.seatsService.getAvailableSeatsByZone(eventId);
-      
+
       return {
         seats,
         availability,
@@ -61,7 +61,7 @@ export class SeatsController {
       const available = seats.filter(s => s.status === 'AVAILABLE').length;
       const held = seats.filter(s => s.status === 'HELD').length;
       const sold = seats.filter(s => s.status === 'SOLD').length;
-      
+
       return {
         seats,
         totalSeats: seats.length,
@@ -85,11 +85,11 @@ export class SeatsController {
   async getSeatById(@Param('seatId') seatId: string) {
     try {
       const seat = await this.seatsService.getSeatById(seatId);
-      
+
       if (!seat) {
         throw new HttpException('Seat not found', HttpStatus.NOT_FOUND);
       }
-      
+
       return seat;
     } catch (error) {
       throw new HttpException(
@@ -118,12 +118,31 @@ export class SeatsController {
         seatIds: body.seatIds,
         customerId: body.customerId,
       });
-      
+
       return result;
     } catch (error) {
       throw new HttpException(
         error.message || 'Failed to hold seats',
         error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  /**
+   * POST /seats/lock-seat
+   * Atomic lock for a single seat as per new requirements
+   */
+  @Post('lock-seat')
+  async lockSeat(
+    @Body() body: { eventSeatId: string; userId: string },
+  ) {
+    try {
+      const result = await this.seatsService.lockSeat(body.eventSeatId, body.userId);
+      return result;
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'Failed to lock seat',
+        error.status || HttpStatus.CONFLICT,
       );
     }
   }
@@ -138,7 +157,7 @@ export class SeatsController {
   ) {
     try {
       await this.seatsService.releaseHeldSeats(body.seatIds, body.eventId);
-      
+
       return {
         success: true,
         message: 'Seats released successfully',
@@ -168,7 +187,7 @@ export class SeatsController {
     try {
       // Verify hold token
       const holdData = this.seatsService.verifyHoldToken(body.holdToken);
-      
+
       // Check token hasn't expired
       if (new Date() > holdData.expiresAt) {
         throw new HttpException(
@@ -213,7 +232,7 @@ export class SeatsController {
   ) {
     try {
       const heldSeats = await this.seatsService.getCustomerHeldSeats(customerId, eventId);
-      
+
       return {
         heldSeats,
         count: heldSeats.length,
@@ -236,7 +255,7 @@ export class SeatsController {
   ) {
     try {
       await this.seatsService.initializeSeatsForEvent(body.eventId, body.venueId);
-      
+
       return {
         success: true,
         message: 'Seats initialized successfully',
@@ -259,7 +278,7 @@ export class SeatsController {
   ) {
     try {
       await this.seatsService.blockSeats(body.seatIds, body.eventId);
-      
+
       return {
         success: true,
         message: 'Seats blocked successfully',
@@ -282,7 +301,7 @@ export class SeatsController {
   ) {
     try {
       await this.seatsService.unblockSeats(body.seatIds, body.eventId);
-      
+
       return {
         success: true,
         message: 'Seats unblocked successfully',

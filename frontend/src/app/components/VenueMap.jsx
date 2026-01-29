@@ -141,7 +141,7 @@ export default function VenueMap({
 
   const boundaryToPath = (boundary) => {
     if (boundary.length === 0) return '';
-    const pathParts = boundary.map((point, idx) => 
+    const pathParts = boundary.map((point, idx) =>
       `${idx === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
     );
     return pathParts.join(' ') + ' Z';
@@ -149,23 +149,25 @@ export default function VenueMap({
 
   const getSeatColor = (seat, isSelected) => {
     if (isSelected) return '#10B981';
-    
+
     switch (seat.status) {
       case 'AVAILABLE':
         return '#E5E7EB';
       case 'HELD':
-        return '#FCD34D';
+        return '#FCD34D'; // Yellow-300
+      case 'LOCKED':
+        return '#F97316'; // Orange-500
       case 'SOLD':
-        return '#6B7280';
+        return '#6B7280'; // Gray-500
       case 'BLOCKED':
-        return '#DC2626';
+        return '#DC2626'; // Red-600
       default:
         return '#E5E7EB';
     }
   };
 
   const isSeatClickable = (seat) => {
-    return seat.status === 'AVAILABLE';
+    return seat.status === 'AVAILABLE' || (seat.status === 'LOCKED' && seat.holdExpiresAt && new Date(seat.holdExpiresAt) < new Date());
   };
 
   const handleMouseDown = (e) => {
@@ -214,7 +216,7 @@ export default function VenueMap({
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-gray-900">{venue.name}</h2>
-        
+
         <div className="flex items-center space-x-2">
           <button
             onClick={handleZoomIn}
@@ -255,8 +257,16 @@ export default function VenueMap({
           <span className="text-sm text-gray-700">Held</span>
         </div>
         <div className="flex items-center space-x-2">
+          <div className="w-4 h-4 rounded-full bg-[#F97316] border border-orange-700"></div>
+          <span className="text-sm text-gray-700">Locked</span>
+        </div>
+        <div className="flex items-center space-x-2">
           <div className="w-4 h-4 rounded-full bg-[#6B7280] border border-gray-700"></div>
           <span className="text-sm text-gray-700">Sold</span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <div className="w-4 h-4 rounded-full bg-[#DC2626] border border-red-700"></div>
+          <span className="text-sm text-gray-700">Blocked</span>
         </div>
       </div>
 
@@ -389,12 +399,11 @@ export default function VenueMap({
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Status:</span>
-                <span className={`font-semibold ${
-                  hoveredSeat.status === 'AVAILABLE' ? 'text-green-600' :
-                  hoveredSeat.status === 'HELD' ? 'text-yellow-600' :
-                  hoveredSeat.status === 'SOLD' ? 'text-gray-600' :
-                  'text-red-600'
-                }`}>
+                <span className={`font-semibold ${hoveredSeat.status === 'AVAILABLE' ? 'text-green-600' :
+                    hoveredSeat.status === 'HELD' ? 'text-yellow-600' :
+                      hoveredSeat.status === 'SOLD' ? 'text-gray-600' :
+                        'text-red-600'
+                  }`}>
                   {hoveredSeat.status}
                 </span>
               </div>

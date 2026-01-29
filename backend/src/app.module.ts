@@ -17,16 +17,19 @@ import { TicketTransactionModule } from './ticket-transaction/ticket-transaction
 import { TicketsModule } from './tickets/tickets.module';
 import { WalletsModule } from './wallets/wallets.module';
 import { ZonesModule } from './zones/zones.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
+    RedisModule,
     ConfigModule.forRoot({
       envFilePath: '.env',
       isGlobal: true,
     }),
     MongooseModule.forRootAsync({
       useFactory: (config: ConfigService) => {
-        const uri = config.get<string>('DB_URI');
+        // const uri = config.get<string>('DB_URI');
+        const uri = "mongodb+srv://neerajagurram777_db_user:nVM8v6FYYpUVoQdm@cluster0.ugip8wc.mongodb.net/ETS_DB"
         if (!uri) {
           throw new Error('DB_URI is not defined');
         }
@@ -54,4 +57,4 @@ import { ZonesModule } from './zones/zones.module';
   ],
   providers: [],
 })
-export class AppModule {}
+export class AppModule { }

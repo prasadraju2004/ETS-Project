@@ -5,7 +5,9 @@ import { Document, Types } from 'mongoose';
 export enum SeatStatus {
   AVAILABLE = 'AVAILABLE',
   HELD = 'HELD',
+  LOCKED = 'LOCKED',
   SOLD = 'SOLD',
+  BLOCKED = 'BLOCKED',
 }
 
 export type SeatDocument = Seat & Document;

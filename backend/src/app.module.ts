@@ -17,6 +17,7 @@ import { TicketTransactionModule } from './ticket-transaction/ticket-transaction
 import { TicketsModule } from './tickets/tickets.module';
 import { WalletsModule } from './wallets/wallets.module';
 import { ZonesModule } from './zones/zones.module';
+import { EventSeatsModule } from './event-seats/event-seats.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { ZonesModule } from './zones/zones.module';
     TicketsModule,
     WalletsModule,
     ZonesModule,
+    EventSeatsModule,
   ],
   providers: [],
 })

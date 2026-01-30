@@ -28,6 +28,18 @@ export class Section {
   @Prop([VenueSeat]) seats: VenueSeat[];
 }
 
+@Schema({ _id: false })
+export class MapDimensions {
+  @Prop({ required: true }) width: number;
+  @Prop({ required: true }) height: number;
+}
+
+@Schema({ _id: false })
+export class StagePosition {
+  @Prop({ required: true }) x: number;
+  @Prop({ required: true }) y: number;
+}
+
 @Schema({ timestamps: true })
 export class Venue {
   @Prop({ required: true }) name: string;
@@ -36,6 +48,12 @@ export class Venue {
 
   @Prop({ type: [Section], default: [] })
   sections: Section[];
+
+  @Prop({ type: MapDimensions })
+  mapDimensions?: MapDimensions;
+
+  @Prop({ type: StagePosition })
+  stagePosition?: StagePosition;
 
   @Prop({ default: true }) isActive: boolean;
 }

@@ -1,7 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
-
 export enum SeatStatus {
   AVAILABLE = 'AVAILABLE',
   HELD = 'HELD',
@@ -38,5 +37,9 @@ export class Seat {
   @Prop() holdExpiresAt?: Date;
 
   @Prop() heldBy?: string;
+
+  @Prop() lockedBy?: string;
+
+  @Prop() price?: number;
 }
 export const SeatSchema = SchemaFactory.createForClass(Seat);

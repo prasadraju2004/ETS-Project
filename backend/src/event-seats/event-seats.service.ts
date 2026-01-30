@@ -21,11 +21,14 @@ export interface SeatResponse {
   _id: string;
   eventId: string;
   zoneId: string;
+  sectionId?: string;
   row: string;
   seatNumber: string;
   status: string;
   holdExpiresAt?: Date;
   heldBy?: string;
+  lockedBy?: string;
+  price?: number;
   position?: { x: number; y: number };
   isAccessible?: boolean;
   isAisle?: boolean;
@@ -72,75 +75,95 @@ export class SeatsService {
    * Get all seats for an event
    */
   async getEventSeats(eventId: string): Promise<SeatResponse[]> {
-    const event = await this.eventModel.findById(eventId).lean();
-    if (!event) throw new BadRequestException('Event not found');
+    try {
+      const event = await this.eventModel.findById(eventId).lean();
+      if (!event) throw new BadRequestException('Event not found');
 
-    const venue = await this.venueModel
-      .findById(event.venue || event.venueId)
-      .lean();
-    if (!venue) throw new BadRequestException('Venue not found');
-    if (!venue.sections || !Array.isArray(venue.sections)) {
-      console.warn(`Venue ${venue._id} has no valid sections array`);
-      return [];
-    }
+      const venue = await this.venueModel
+        .findById(event.venue || event.venueId)
+        .lean();
+      if (!venue) throw new BadRequestException('Venue not found');
+      if (!venue.sections || !Array.isArray(venue.sections)) {
+        console.warn(`Venue ${venue._id} has no valid sections array`);
+        return [];
+      }
 
-    const zones = await this.zoneModel
-      .find({ eventId: new Types.ObjectId(eventId) })
-      .lean();
-    const persistentSeats = await this.seatModel
-      .find({ eventId: new Types.ObjectId(eventId) })
-      .lean();
+      const persistentSeats = await this.seatModel
+        .find({ eventId: new Types.ObjectId(eventId) })
+        .lean();
 
-    const allSeats: SeatResponse[] = [];
+      const allSeats: SeatResponse[] = [];
 
-    for (const section of venue.sections) {
-      const zone = zones.find(
-        (z: any) =>
-          z.name === section.name ||
-          z.name.includes(section.sectionId) ||
-          z.sectionId === section.sectionId,
-      );
-      if (!zone) continue;
+      // Treat sections as zones
+      for (
+        let sectionIndex = 0;
+        sectionIndex < venue.sections.length;
+        sectionIndex++
+      ) {
+        const section = venue.sections[sectionIndex];
+        const secId = section.sectionId || section.id;
 
-      const seatUids = section.seats.map(
-        (s: any) => `${section.sectionId}:${s.row}:${s.seatNumber}`,
-      );
-      const redisKeys = seatUids.map(
-        (uid) => `lock:event:${eventId}:seat:${uid}`,
-      );
-      const locks = await this.redis.mget(...redisKeys);
+        // Get price for this zone from event zonePricing
+        const zoneKey = `z${sectionIndex + 1}`;
+        const price = event.zonePricing?.[zoneKey] || 0;
 
-      section.seats.forEach((seatConfig: any, index: number) => {
-        const uid = seatUids[index];
-        const virtualId = `${eventId}:${uid}`;
-        const lockedBy = locks[index];
-        const persistent = persistentSeats.find(
-          (ps) =>
-            ps.sectionId === section.sectionId &&
-            ps.row === seatConfig.row &&
-            ps.seatNumber === seatConfig.seatNumber.toString(),
-        );
+        const price = event.zonePricing?.[zoneKey] || 0;
 
-        if (persistent) {
-          allSeats.push(this.mapSeatToResponse(persistent));
-        } else {
-          allSeats.push({
-            _id: virtualId,
-            eventId,
-            zoneId: zone._id.toString(),
-            row: seatConfig.row,
-            seatNumber: seatConfig.seatNumber.toString(),
-            status: lockedBy ? SeatStatus.LOCKED : SeatStatus.AVAILABLE,
-            heldBy: lockedBy || undefined,
-            position: seatConfig.position,
-            isAccessible: seatConfig.isAccessible,
-            isAisle: seatConfig.isAisle,
-          });
+        if (!section.seats || !Array.isArray(section.seats)) {
+          console.log(`  ⚠️ Section ${secId} has no seats array`);
+          continue;
         }
-      });
-    }
 
-    return allSeats;
+        const seatUids = section.seats.map(
+          (s: any) => `${secId}:${s.row}:${s.num || s.number || s.seatNumber}`,
+        );
+        const redisKeys = seatUids.map(
+          (uid) => `lock:event:${eventId}:seat:${uid}`,
+        );
+        const locks = await this.redis.mget(...redisKeys);
+
+        const locks = await this.redis.mget(...redisKeys);
+
+        section.seats.forEach((seatConfig: any, index: number) => {
+          const uid = seatUids[index];
+          const virtualId = `${eventId}:${uid}`;
+          const lockedBy = locks[index];
+          const seatNum =
+            seatConfig.num || seatConfig.number || seatConfig.seatNumber;
+          const persistent = persistentSeats.find(
+            (ps) =>
+              ps.sectionId === secId &&
+              ps.row === seatConfig.row &&
+              ps.seatNumber === seatNum.toString(),
+          );
+
+          if (persistent) {
+            allSeats.push(this.mapSeatToResponse(persistent));
+          } else {
+            allSeats.push({
+              _id: virtualId,
+              eventId,
+              zoneId: secId, // Use section ID as zone ID
+              sectionId: secId,
+              row: seatConfig.row,
+              seatNumber: seatNum.toString(),
+              status: lockedBy ? SeatStatus.LOCKED : SeatStatus.AVAILABLE,
+              heldBy: lockedBy || undefined,
+              price: price,
+              position: seatConfig.position,
+              isAccessible: seatConfig.isAccessible,
+              isAisle: seatConfig.isAisle,
+            });
+          }
+        });
+      }
+
+      return allSeats;
+    } catch (err) {
+      console.error('❌ ERROR in getEventSeats:', err.message);
+      console.error('Stack:', err.stack);
+      throw err;
+    }
   }
 
   /**
@@ -184,7 +207,8 @@ export class SeatsService {
     // Get Redis Locks
     // We use a virtual ID format: eventId:sectionId:row:seatNumber
     const seatUids = section.seats.map(
-      (s: any) => `${section.sectionId}:${s.row}:${s.seatNumber}`,
+      (s: any) =>
+        `${section.sectionId}:${s.row}:${s.num || s.number || s.seatNumber}`,
     );
     const redisKeys = seatUids.map(
       (uid) => `lock:event:${eventId}:seat:${uid}`,
@@ -195,10 +219,11 @@ export class SeatsService {
       const uid = seatUids[index];
       const virtualId = `${eventId}:${uid}`;
       const lockedBy = locks[index];
+      const seatNum =
+        seatConfig.num || seatConfig.number || seatConfig.seatNumber;
       const persistent = persistentSeats.find(
         (ps) =>
-          ps.row === seatConfig.row &&
-          ps.seatNumber === seatConfig.seatNumber.toString(),
+          ps.row === seatConfig.row && ps.seatNumber === seatNum.toString(),
       );
 
       if (persistent) {
@@ -210,7 +235,7 @@ export class SeatsService {
         eventId,
         zoneId,
         row: seatConfig.row,
-        seatNumber: seatConfig.seatNumber.toString(),
+        seatNumber: seatNum.toString(),
         status: lockedBy ? SeatStatus.LOCKED : SeatStatus.AVAILABLE,
         heldBy: lockedBy || undefined,
         position: seatConfig.position,
@@ -259,7 +284,8 @@ export class SeatsService {
 
       const zId = zone._id.toString();
       const seatUids = section.seats.map(
-        (s: any) => `${section.sectionId}:${s.row}:${s.seatNumber}`,
+        (s: any) =>
+          `${section.sectionId}:${s.row}:${s.num || s.number || s.seatNumber}`,
       );
       const redisKeys = seatUids.map(
         (uid) => `lock:event:${eventId}:seat:${uid}`,
@@ -322,7 +348,9 @@ export class SeatsService {
       if (!section || !section.seats) return null;
 
       const seatConfig = section.seats.find(
-        (s: any) => s.row === row && s.seatNumber.toString() === seatNumber,
+        (s: any) =>
+          s.row === row &&
+          (s.num || s.number || s.seatNumber || '').toString() === seatNumber,
       );
 
       if (!seatConfig) return null;
@@ -433,7 +461,9 @@ export class SeatsService {
         );
         const seatConfig = section?.seats.find(
           (s: any) =>
-            s.row === v.row && s.seatNumber.toString() === v.seatNumber,
+            s.row === v.row &&
+            (s.num || s.number || s.seatNumber || '').toString() ===
+              v.seatNumber,
         );
         const zone = zones.find(
           (z: any) =>
@@ -546,7 +576,9 @@ export class SeatsService {
           );
           const seatConfig = section?.seats.find(
             (s: any) =>
-              s.row === v.row && s.seatNumber.toString() === v.seatNumber,
+              s.row === v.row &&
+              (s.num || s.number || s.seatNumber || '').toString() ===
+                v.seatNumber,
           );
 
           seatMetas.push({
@@ -958,11 +990,14 @@ export class SeatsService {
       _id: seat._id.toString(),
       eventId: seat.eventId.toString(),
       zoneId: seat.zoneId.toString(),
+      sectionId: seat.sectionId,
       row: seat.row,
       seatNumber: seat.seatNumber,
       status: seat.status,
       holdExpiresAt: seat.holdExpiresAt,
       heldBy: seat.heldBy?.toString(),
+      lockedBy: seat.lockedBy,
+      price: seat.price,
       position: seat.position,
       isAccessible: seat.isAccessible,
       isAisle: seat.isAisle,

@@ -1,0 +1,35 @@
+{
+  "_id": {
+    "$oid": "6971d366ea5645dcaf823b82"
+  },
+  "name": "Movie Premiere Night",
+  "description": "Exclusive cinema premiere",
+  "image": "http://res.cloudinary.com/dx69odbp9/image/upload/v1769620004/nqimvcngbppsh64rk9i8.jpg",
+  "likes": 9019,
+  "dislikes": 0,
+  "startDateTime": {
+    "$date": "2026-01-30T19:00:00.000Z"
+  },
+  "endDateTime": {
+    "$date": "2026-01-30T22:00:00.000Z"
+  },
+  "venueId": {
+    "$oid": "697ce1928c502c2b77719ff9"
+  },
+  "seatingType": "SEATED",
+  "zonePricing": {
+    "z1": 500,
+    "z2": 350,
+    "z3": 250
+  },
+  "currency": "USD",
+  "seatHoldTimeout": 10,
+  "category": "THEATER",
+  "status": "ON_SALE",
+  "createdAt": {
+    "$date": "2025-11-18T10:00:00.000Z"
+  },
+  "updatedAt": {
+    "$date": "2026-01-29T09:09:39.358Z"
+  }
+}

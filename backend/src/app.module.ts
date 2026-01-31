@@ -12,12 +12,14 @@ import { LoyaltyTransactionsModule } from './loyalty-transactions/loyalty-transa
 import { OrdersModule } from './orders/orders.module';
 import { RefundsModule } from './refunds/refunds.module';
 import { ScansModule } from './scans/scans.module';
-import { SeatsModule } from './event-seats/event-seats.module';
+
 import { TicketsModule } from './tickets/tickets.module';
 import { WalletsModule } from './wallets/wallets.module';
 
 import { RedisModule } from './redis/redis.module';
 import { ZonesModule } from './zones/zones.module';
+import { EventSeatsModule } from './event-seats/event-seats.module';
+import { VenueModule } from './venue/venue.module';
 
 @Module({
   imports: [
@@ -29,7 +31,8 @@ import { ZonesModule } from './zones/zones.module';
     MongooseModule.forRootAsync({
       useFactory: (config: ConfigService) => {
         // const uri = config.get<string>('DB_URI');
-        const uri = "mongodb+srv://neerajagurram777_db_user:nVM8v6FYYpUVoQdm@cluster0.ugip8wc.mongodb.net/ETS_DB"
+        const uri =
+          'mongodb+srv://neerajagurram777_db_user:nVM8v6FYYpUVoQdm@cluster0.ugip8wc.mongodb.net/ETS_DB';
         if (!uri) {
           throw new Error('DB_URI is not defined');
         }
@@ -49,11 +52,12 @@ import { ZonesModule } from './zones/zones.module';
     OrdersModule,
     RefundsModule,
     ScansModule,
-    SeatsModule,
     TicketsModule,
     WalletsModule,
     ZonesModule,
+    EventSeatsModule,
+    VenueModule,
   ],
   providers: [],
 })
-export class AppModule { }
+export class AppModule {}

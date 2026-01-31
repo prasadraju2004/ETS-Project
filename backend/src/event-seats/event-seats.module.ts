@@ -1,31 +1,25 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { SeatsController } from './event-seats.controller';
-import { SeatsService } from './event-seats.service';
-import { SeatSchema } from './event-seats.schema';
-import { EventSchema } from '../events/events.schema';
-import { VenueSchema } from '../venue/venue.schema';
-import { ZoneSchema } from '../zones/zones.schema';
+import { EventSeatsService } from './event-seats.service';
+import { EventSeatsController } from './event-seats.controller';
+import { Seat, SeatSchema } from './event-seats.schema';
+import { Event, EventSchema } from '../events/events.schema';
+import { Venue, VenueSchema } from '../venue/venue.schema';
+import { Ticket, TicketSchema } from '../tickets/tickets.schema';
 import { EventsModule } from '../events/events.module';
-import { VenueModule } from '../venue/venue.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: 'Seat', schema: SeatSchema },
-      { name: 'Event', schema: EventSchema },
-      { name: 'Venue', schema: VenueSchema },
-      { name: 'Zone', schema: ZoneSchema },
-      {
-        name: 'Ticket',
-        schema: require('../tickets/tickets.schema').TicketSchema,
-      },
+      { name: Seat.name, schema: SeatSchema },
+      { name: Event.name, schema: EventSchema },
+      { name: Venue.name, schema: VenueSchema },
+      { name: Ticket.name, schema: TicketSchema },
     ]),
-    EventsModule, // For EventGateway
-    VenueModule,
+    EventsModule,
   ],
-  controllers: [SeatsController],
-  providers: [SeatsService],
-  exports: [SeatsService],
+  providers: [EventSeatsService],
+  controllers: [EventSeatsController],
+  exports: [EventSeatsService],
 })
-export class SeatsModule {}
+export class EventSeatsModule {}
